@@ -15,9 +15,9 @@
     --font: 'Advent Pro', system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: #fff; }
+  html, body { margin: 0; background: var(--bg); }
   body { color: var(--ink); font: 16px/1.4 var(--font); -webkit-font-smoothing: antialiased; }
-  .wrap { max-width: 980px; margin: 0 auto; padding-bottom: 6px; }
+  .wrap { max-width: 1012px; margin: 0 auto; padding: 16px 16px 24px; }
   section + section { margin-top: 28px; }
   .bar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 12px; padding: 9px 14px;
     background: var(--navy); color: #fff; font: 700 14px var(--font); letter-spacing: .08em; text-transform: uppercase; }
@@ -31,7 +31,7 @@
   .intro h1 { display: table; margin: 0 auto 16px; padding: 9px 22px; background: var(--navy); color: #fff; font: 700 20px var(--font); letter-spacing: .08em; text-transform: uppercase; }
   .intro p, .fact p { margin: 0 0 10px; font-size: 17px; line-height: 1.55; }
   .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .fact { padding: 14px 16px; border: 1px solid var(--line); border-top: 3px solid var(--gold); border-radius: 8px; }
+  .fact { background: #fff; padding: 14px 16px; border: 1px solid var(--line); border-top: 3px solid var(--gold); border-radius: 8px; }
   .fact h3 { margin: 0 0 6px; font: 700 15px var(--font); color: var(--navy); letter-spacing: .06em; text-transform: uppercase; }
   .fact p { font-size: 16px; }
   .fact p:last-child { margin-bottom: 0; }
