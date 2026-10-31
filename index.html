@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>European Council Tracker – Europe Elects</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Advent+Pro:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root {
+    --navy: #1B2A4A; --gold: #F2B705; --ink: #1A1D23; --muted: #5E636E; --soft: #8A8F99;
+    --line: #E4E2DB; --grid: #EFEDE7; --bg: #F7F6F2; --up: #1B7F3B; --down: #C8202F;
+    --font: 'Advent Pro', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #fff; }
+  body { color: var(--ink); font: 16px/1.4 var(--font); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 980px; margin: 0 auto; padding-bottom: 6px; }
+  section + section { margin-top: 28px; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 12px; padding: 9px 14px;
+    background: var(--navy); color: #fff; font: 700 14px var(--font); letter-spacing: .08em; text-transform: uppercase; }
+  .bar small { color: var(--gold); font-size: 13px; letter-spacing: .06em; white-space: nowrap; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+  .hint { margin: 0 0 10px; color: var(--muted); font-size: 15px; }
+  .note { margin: 12px 0 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+  .dot { display: inline-block; flex: none; width: 12px; height: 12px; border-radius: 50%; }
+
+  .intro { margin: 0 0 22px; }
+  .intro h1 { display: table; margin: 0 auto 16px; padding: 9px 22px; background: var(--navy); color: #fff; font: 700 20px var(--font); letter-spacing: .08em; text-transform: uppercase; }
+  .intro p, .fact p { margin: 0 0 10px; font-size: 17px; line-height: 1.55; }
+  .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .fact { padding: 14px 16px; border: 1px solid var(--line); border-top: 3px solid var(--gold); border-radius: 8px; }
+  .fact h3 { margin: 0 0 6px; font: 700 15px var(--font); color: var(--navy); letter-spacing: .06em; text-transform: uppercase; }
+  .fact p { font-size: 16px; }
+  .fact p:last-child { margin-bottom: 0; }
+  @media (max-width: 720px) { .facts { grid-template-columns: 1fr; } }
+  /* ---------- now ---------- */
+  .now { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 22px; align-items: center; }
+  #hemi svg { display: block; width: 100%; height: auto; }
+  .seat { cursor: pointer; outline: none; transition: opacity .15s; }
+  .seat > * { transition: transform .15s; }
+  .seat.on > *, .seat:focus > * { transform: scale(1.18); }
+  .seat circle { stroke: #fff; stroke-width: 1.5; }
+  .seat-cc { font: 700 13px var(--font); text-anchor: middle; letter-spacing: .03em; pointer-events: none; }
+  .who-tip { display: flex; gap: 10px; align-items: center; }
+  .who-tip img, .who-tip .ph { flex: none; width: 58px; height: 58px; border-radius: 50%; border: 3px solid; object-fit: cover; object-position: top; }
+  .who-tip .ph { display: grid; place-items: center; border: 0; font-weight: 700; font-size: 17px; }
+  .who-tip b { display: block; font-size: 16px; color: var(--navy); }
+  .who-tip span { display: block; }
+  .who-tip .grp { display: inline-flex; margin-top: 3px; }
+  .who-tip .since { margin-top: 3px; color: var(--muted); font-size: 12.5px; }
+  .total { font: 700 44px/1 var(--font); fill: var(--navy); text-anchor: middle; }
+  .total-l { font: 600 13px var(--font); fill: var(--muted); text-anchor: middle; letter-spacing: .08em; text-transform: uppercase; }
+  .majority { font: 600 12px var(--font); fill: var(--soft); text-anchor: middle; }
+  .tally { list-style: none; margin: 0; padding: 0; }
+  .tally li { display: grid; grid-template-columns: 12px minmax(0, 1fr) 90px 26px 34px; gap: 10px; align-items: center; padding: 7px 6px; border-radius: 6px; cursor: pointer; }
+  .tally li:hover, .tally li.on { background: var(--bg); }
+  .tally .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tally .name span { color: var(--muted); font-weight: 400; }
+  .tally .track { height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; }
+  .tally .fill { height: 100%; border-radius: 4px; }
+  .tally .n { text-align: right; font: 700 20px/1 var(--font); color: var(--navy); }
+  .tally .d { font-size: 13px; font-weight: 700; text-align: left; }
+  .tally li.zero { color: var(--soft); }
+  .tally li.zero .n { color: var(--soft); }
+  .up { color: var(--up); } .down { color: var(--down); }
+
+  .latest { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .latest h3, .changes h3 { margin: 0 0 10px; font: 700 15px var(--font); color: var(--navy); letter-spacing: .06em; text-transform: uppercase; }
+  .latest h3 span { color: var(--muted); font-weight: 600; letter-spacing: 0; text-transform: none; }
+  .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+
+  /* change card (used for "latest" and the full list) */
+  .chg { padding: 10px 12px; background: var(--bg); border-radius: 6px; border-left: 3px solid var(--navy); }
+  .chg .c { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+  .chg .c .cc { font-size: 11px; font-weight: 700; color: #fff; background: var(--navy); border-radius: 3px; padding: 1px 5px; letter-spacing: .05em; }
+  .chg .who { margin-top: 4px; display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; font-size: 14.5px; }
+  .chg .who .k { color: var(--soft); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; padding-top: 2px; }
+  .grp { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px 0 5px; border: 1px solid var(--line); border-radius: 999px; background: #fff;
+    font-size: 11.5px; font-weight: 700; line-height: 17px; color: var(--ink); white-space: nowrap; vertical-align: 1px; }
+  .grp::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--g); }
+  .chg .why { margin-top: 5px; color: var(--muted); font-size: 13.5px; line-height: 1.35; }
+
+  /* ---------- chart ---------- */
+  .tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin-bottom: 8px; }
+  .seg { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; }
+  .seg button { padding: 6px 16px; border: 0; background: #fff; color: var(--navy); font: 700 14px var(--font); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--navy); color: #fff; }
+  .ytitle { font: 600 12.5px var(--font); fill: var(--muted); text-anchor: middle; letter-spacing: .04em; }
+  .band { stroke: #fff; stroke-width: .6; transition: opacity .15s; }
+  .half { stroke: var(--navy); stroke-width: 1; stroke-dasharray: 5 4; }
+  .half-l { font: 700 12px var(--font); fill: var(--navy); paint-order: stroke; stroke: #fff; stroke-width: 3px; }
+  .legend { margin-bottom: 6px !important; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+  .legend button { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: #fff;
+    color: var(--ink); font: 600 14px var(--font); cursor: pointer; transition: opacity .15s, border-color .15s; }
+  .legend button:hover { border-color: var(--navy); }
+  .legend button[aria-pressed="true"] { border-color: var(--navy); box-shadow: inset 0 0 0 1px var(--navy); }
+  .legend.filtering button[aria-pressed="false"] { opacity: .4; }
+  .clear { border: 0; background: none; color: var(--navy); font: 600 14px var(--font); text-decoration: underline; cursor: pointer; padding: 4px; visibility: hidden; }
+  .clear.show { visibility: visible; }
+  #lines svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+  .axis text { font: 500 13px var(--font); fill: var(--muted); }
+  .axis path, .axis line { stroke: none; }
+  .gridline { stroke: var(--grid); }
+  .series { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; transition: opacity .15s; }
+  .endlab { font: 700 13px var(--font); dominant-baseline: middle; transition: opacity .15s; }
+  .rule { stroke: var(--navy); stroke-width: 1; }
+  .evtrack-l { font: 600 11px var(--font); fill: var(--soft); letter-spacing: .06em; text-transform: uppercase; }
+  .evmark { fill: var(--navy); transition: fill .12s; }
+  .evmark.on { fill: var(--gold); }
+  .evcount { font: 700 9px var(--font); fill: var(--navy); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+
+  /* ---------- list of changes ---------- */
+  .changes .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .changes select { height: 36px; padding: 0 10px; border: 1px solid #D5D3CC; border-radius: 6px; background: #fff; color: var(--ink); font: 600 15px var(--font); }
+  .month { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .month:first-child { border-top: 0; padding-top: 0; }
+  .month .m { font: 700 16px var(--font); color: var(--navy); padding-top: 8px; }
+  .month .m span { display: block; color: var(--soft); font-size: 13px; font-weight: 600; }
+  .month .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+  .more { display: block; margin: 12px auto 0; padding: 8px 16px; border: 1px solid var(--navy); border-radius: 999px; background: #fff; color: var(--navy); font: 700 14px var(--font); cursor: pointer; }
+  .more:hover { background: var(--navy); color: #fff; }
+  .credit { margin: 8px 0 0; text-align: right; color: var(--muted); font-size: 13px; }
+
+  /* ---------- tooltip ---------- */
+  .tip { position: fixed; z-index: 10; pointer-events: none; opacity: 0; transition: opacity .1s; width: max-content; max-width: min(320px, calc(100vw - 16px)); padding: 10px 12px;
+    background: #fff; border: 1px solid var(--line); border-top: 3px solid var(--navy); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.14); font-size: 14px; }
+  .tip > b { display: block; margin-bottom: 6px; color: var(--navy); font-size: 16px; }
+  .tip table { border-collapse: collapse; width: 100%; }
+  .tip td { padding: 1px 0; white-space: nowrap; }
+  .tip td.v { text-align: right; font-weight: 700; padding-left: 14px; }
+  .tip td.dd { text-align: right; font-size: 12px; font-weight: 700; padding-left: 6px; min-width: 22px; }
+  .tip .dot { width: 9px; height: 9px; margin-right: 6px; }
+  .tip .chg { margin-top: 8px; padding: 7px 9px; }
+  .tip .chg .c { font-size: 14.5px; }
+  .tip .chg .who { font-size: 13.5px; }
+  .tip .chg .why { font-size: 12.5px; }
+
+  @media (max-width: 720px) {
+    .now { grid-template-columns: 1fr; gap: 8px; }
+    .card { padding: 14px 12px; }
+    .tally li { grid-template-columns: 12px minmax(0, 1fr) 60px 24px 30px; gap: 8px; }
+    .month { grid-template-columns: 1fr; gap: 6px; }
+    .month .m { padding-top: 0; }
+    .month .m span { display: inline; margin-left: 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="intro">
+    <h1>European Council Tracker</h1>
+    <p>The <strong>European Council</strong> (informally EUCO) is a collective body composed of the national leaders of the 27 countries of the European Union (EU).</p>
+    <p>Established as an informal summit in 1975, the European Council was formalized as an EU institution in 2009. It meets four times a year to define the Union’s policy agenda and overall political direction. While the European Council holds no formal legislative and executive power, it is often considered to be the most powerful political body of the European Union.</p>
+  </header>
+
+  <section>
+    <h2 class="bar">Who sits in the European Council today <small id="asof"></small></h2>
+    <div class="card">
+      <div class="now">
+        <div id="hemi" role="img" aria-label="European Council seats by political affiliation"></div>
+        <div>
+          <p class="hint">Each of the 27 member states has one seat, held by its head of state or government. Hover over a seat to see who holds it, or over a group to highlight its seats.</p>
+          <ul class="tally" id="tally"></ul>
+        </div>
+      </div>
+      <div class="latest" id="latest"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="bar">How the European Council has changed <small id="range"></small></h2>
+    <div class="card">
+      <p class="hint">Each leader's national party belongs to a European political family, shown by colour. This chart counts how many of the members belonged to each family, month by month.</p>
+      <div class="tools">
+        <div class="seg" role="group" aria-label="Chart type">
+          <button type="button" data-mode="lines" aria-pressed="true">Lines</button>
+          <button type="button" data-mode="stacked" aria-pressed="false">Stacked</button>
+        </div>
+        <button type="button" class="clear" id="clear">Show all groups</button>
+      </div>
+      <ul class="legend" id="legend" aria-label="Highlight a group"></ul>
+      <div id="lines" role="img" aria-label="Seats per political affiliation in the European Council by month"></div>
+      <p class="note">Move along the chart to see each month's seats and who joined or left. The bars under the chart mark months with a change of member or affiliation (taller bar = more changes). Seats are not weighted by population. The effective date is the first of the first full month served, at 0:00 CEST. The changes for Hungary in April 2021 and August 2024 reflect a change of the party's international affiliation, not a new member.</p>
+    </div>
+  </section>
+
+  <section class="prose">
+    <h2 class="bar">How the European Council works</h2>
+    <div class="facts">
+      <div class="fact"><h3>Appointments</h3><p>Beyond providing political guidance, the European Council also exercises powers of appointment; for example, it proposes a candidate for President of the European Commission, who must then be approved by the European Parliament by an absolute majority of its members.</p></div>
+      <div class="fact"><h3>Qualified majority</h3><p>Other votes are conducted using a system called Qualified Majority Voting, where <strong>55% of member states</strong>, representing at least <strong>65% of the EU population</strong>, must vote in favour for a proposal to pass.</p></div>
+      <div class="fact"><h3>Who represents each country</h3><p>National law determines whether it is the head of state (president or monarch) or the head of government (prime minister) that represents each EU Member State in the European Council.</p>
+        <p>In France, Cyprus, Romania, and Lithuania, the President, who is directly elected by the people, sits on the European Council. In the other EU Member States, it is the head of government who represents each country in the European Council. The head of government is normally appointed by the national parliament or the head of state from the party or coalition that commands a majority of seats in parliament after a general election.</p></div>
+      <div class="fact"><h3>The President</h3><p>The European Council appoints a full-time president for a two-and-a-half-year term, with the possibility of renewal once, who coordinates the work of the institution. The current president of the European Council is <strong>António Costa</strong> (PS-S&amp;D), former Prime Minister of Portugal.</p></div>
+    </div>
+  </section>
+
+  <section class="changes">
+    <h2 class="bar">Every change since 2019 <small id="nchanges"></small></h2>
+    <div class="card">
+      <div class="filters">
+        <select id="f-country" aria-label="Filter by country"><option value="">All countries</option></select>
+      </div>
+      <div id="changes"></div>
+      <button type="button" class="more" id="more">Show all changes</button>
+    </div>
+    <p class="credit">Source: Europe Elects</p>
+  </section>
+
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+(() => {
+// =====================================================================
+// DATA (hardcoded for now). Edit HISTORY for seats per month, EVENTS for who joined or left.
+// =====================================================================
+let GROUPS = [ // order = left to right in the seat chart
+  { key: "LEFT",  label: "LEFT",                      short: "LEFT",   color: "#8B0A1A" },
+  { key: "S&D",   label: "Centre-left S&D",           short: "S&D",    color: "#E3000F" },
+  { key: "G/EFA", label: "Greens/EFA",                short: "Greens", color: "#2EA44F" },
+  { key: "RE",    label: "Liberal RE",                short: "RE",     color: "#FFC800" },
+  { key: "UNAFF", label: "Unaffiliated",              short: "Unaff.", color: "#B5B5B5" },
+  { key: "EPP",   label: "Centre-right EPP",          short: "EPP",    color: "#3D9BF5" },
+  { key: "ECR",   label: "National-conservative ECR", short: "ECR",    color: "#0A2BD6" },
+  { key: "PfE",   label: "Right-wing PfE",            short: "PfE",    color: "#111111" },
+  { key: "ESN",   label: "Far-right ESN",             short: "ESN",    color: "#6B3B2A" },
+  { key: "NI",    label: "Non Inscrits",              short: "NI",     color: "#767A83" },
+];
+// Month  EPP S&D ECR RE G/EFA LEFT NI PfE ESN UNAFF   ("-" = group did not exist yet). The last row is "today".
+let HISTORY = `
+Jan-19 8 5 2 10 0 1 0 0 - 2
+Feb-19 9 5 2 9 0 1 0 0 - 2
+Mar-19 9 5 2 9 0 1 0 0 - 2
+Apr-19 9 5 2 9 0 1 0 0 - 2
+May-19 9 5 2 9 0 1 0 0 - 2
+Jun-19 9 5 2 9 0 1 0 0 - 2
+Jul-19 8 7 2 7 0 1 0 0 - 3
+Aug-19 9 7 2 7 0 0 0 0 - 3
+Sep-19 9 7 2 7 0 0 0 0 - 3
+Oct-19 9 7 2 7 0 0 0 0 - 3
+Nov-19 9 7 2 7 0 0 0 0 - 3
+Dec-19 9 7 2 7 0 0 0 0 - 3
+Jan-20 9 7 2 7 0 0 0 0 - 3
+Feb-20 10 7 1 7 0 0 0 0 - 2
+Mar-20 10 7 1 7 0 0 0 0 - 2
+Apr-20 12 6 1 6 0 0 0 0 - 2
+May-20 12 6 1 6 0 0 0 0 - 2
+Jun-20 12 6 1 6 0 0 0 0 - 2
+Jul-20 12 6 1 6 0 0 0 0 - 2
+Aug-20 12 6 1 6 0 0 0 0 - 2
+Sep-20 12 6 1 6 0 0 0 0 - 2
+Oct-20 12 6 1 6 0 0 0 0 - 2
+Nov-20 12 6 1 6 0 0 0 0 - 2
+Dec-20 12 6 1 6 0 0 0 0 - 2
+Jan-21 12 6 1 6 0 0 0 0 - 2
+Feb-21 12 6 1 6 0 0 0 0 - 2
+Mar-21 12 6 1 6 0 0 0 0 - 2
+Apr-21 11 6 1 6 0 0 1 0 - 2
+May-21 11 6 1 6 0 0 1 0 - 2
+Jun-21 10 6 1 7 0 0 1 0 - 2
+Jul-21 10 6 1 7 0 0 1 0 - 2
+Aug-21 10 6 1 7 0 0 1 0 - 2
+Sep-21 10 6 1 7 0 0 1 0 - 2
+Oct-21 10 6 1 7 0 0 1 0 - 2
+Nov-21 10 6 1 7 0 0 1 0 - 2
+Dec-21 10 6 1 7 0 0 1 0 - 2
+Jan-22 9 7 2 6 0 0 1 0 - 2
+Feb-22 9 7 2 6 0 0 1 0 - 2
+Mar-22 9 7 2 6 0 0 1 0 - 2
+Apr-22 9 7 2 6 0 0 1 0 - 2
+May-22 9 7 2 6 0 0 1 0 - 2
+Jun-22 8 7 2 7 0 0 1 0 - 2
+Jul-22 7 7 2 8 0 0 1 0 - 2
+Aug-22 7 7 2 8 0 0 1 0 - 2
+Sep-22 7 7 2 7 0 0 1 0 - 3
+Oct-22 7 7 2 7 0 0 1 0 - 3
+Nov-22 8 6 3 7 0 0 1 0 - 2
+Dec-22 8 6 3 7 0 0 1 0 - 2
+Jan-23 9 6 3 6 0 0 1 0 - 2
+Feb-23 9 6 3 6 0 0 1 0 - 2
+Mar-23 8 6 3 6 0 0 1 0 - 3
+Apr-23 8 6 3 6 0 0 1 0 - 3
+May-23 8 6 3 6 0 0 1 0 - 3
+Jun-23 6 6 3 6 0 0 1 0 - 5
+Jul-23 8 5 3 7 0 0 1 0 - 3
+Aug-23 8 5 3 7 0 0 1 0 - 3
+Sep-23 8 5 3 7 0 0 1 0 - 3
+Oct-23 8 5 3 7 0 0 1 0 - 3
+Nov-23 8 5 3 7 0 0 2 0 - 2
+Dec-23 9 5 3 6 0 0 2 0 - 2
+Jan-24 10 5 2 6 0 0 2 0 - 2
+Feb-24 10 5 2 6 0 0 2 0 - 2
+Mar-24 10 5 2 6 0 0 2 0 - 2
+Apr-24 10 5 2 6 0 0 2 0 - 2
+May-24 11 4 2 5 0 0 2 0 - 3
+Jun-24 11 4 2 5 0 0 2 0 - 3
+Jul-24 11 4 2 5 0 0 2 0 - 3
+Aug-24 11 4 2 4 0 0 1 1 0 4
+Sep-24 11 4 2 4 0 0 1 1 0 4
+Oct-24 11 4 2 4 0 0 1 1 0 4
+Nov-24 11 4 2 4 0 0 1 1 0 4
+Dec-24 11 4 2 4 0 0 1 1 0 4
+Jan-25 11 4 2 4 0 0 1 1 0 4
+Feb-25 11 4 2 5 0 0 1 1 0 3
+Mar-25 11 4 3 4 0 0 1 1 0 3
+Apr-25 11 4 3 4 0 0 1 1 0 3
+May-25 11 4 3 4 0 0 1 1 0 3
+Jun-25 11 3 3 5 0 0 1 1 0 3
+Jul-25 11 3 3 5 0 0 1 1 0 3
+Aug-25 11 3 3 5 0 0 1 1 0 3
+Sep-25 11 3 3 5 0 0 1 1 0 3
+Oct-25 11 3 3 5 0 0 1 1 0 3
+Nov-25 11 3 3 5 0 0 1 1 0 3
+Dec-25 11 3 3 5 0 0 1 1 0 3
+Jan-26 11 3 2 5 0 0 1 2 0 3
+Feb-26 11 3 2 5 0 0 1 2 0 3
+Mar-26 10 3 2 7 0 0 1 2 0 2
+Apr-26 10 3 2 7 0 0 1 2 0 2
+May-26 10 3 2 7 0 0 1 2 0 2
+Jun-26 11 3 3 5 0 0 1 1 0 3`;
+let EVENTS = [
+  ["Feb-19", "LV", "Māris Kučinskis (ZZS)", "RE", "Krišjānis Kariņš (JV)", "EPP", "New government after the October 2018 parliamentary election"],
+  ["Jul-19", "AT", "Sebastian Kurz (ÖVP)", "EPP", "Brigitte Bierlein (independent)", "UNAFF", "Kurz government ousted in a no-confidence vote after the Ibiza affair; caretaker government"],
+  ["Jul-19", "DK", "Lars Løkke Rasmussen (V)", "RE", "Mette Frederiksen (S)", "S&D", "June 2019 parliamentary election"],
+  ["Jul-19", "FI", "Juha Sipilä (Kesk)", "RE", "Antti Rinne (SDP)", "S&D", "April 2019 parliamentary election"],
+  ["Aug-19", "GR", "Alexis Tsipras (SYRIZA)", "LEFT", "Kyriakos Mitsotakis (ND)", "EPP", "July 2019 snap parliamentary election"],
+  ["Aug-19", "GB", "Theresa May (Con)", "ECR", "Boris Johnson (Con)", "ECR", "May resigned after Parliament repeatedly rejected her Brexit deal"],
+  ["Nov-19", "BE", "Charles Michel (MR)", "RE", "Sophie Wilmès (MR)", "RE", "Michel elected President of the European Council"],
+  ["Jan-20", "FI", "Antti Rinne (SDP)", "S&D", "Sanna Marin (SDP)", "S&D", "Rinne resigned after losing the Centre Party's confidence over the postal strike"],
+  ["Feb-20", "AT", "Brigitte Bierlein (independent)", "UNAFF", "Sebastian Kurz (ÖVP)", "EPP", "New government after the September 2019 snap election"],
+  ["Feb-20", "MT", "Joseph Muscat (PL)", "S&D", "Robert Abela (PL)", "S&D", "Muscat resigned amid the Daphne Caruana Galizia murder investigation"],
+  ["Feb-20", "GB", "Boris Johnson (Con)", "ECR", "—", "", "The United Kingdom left the European Union on 31 January 2020"],
+  ["Apr-20", "SK", "Peter Pellegrini (Smer)", "S&D", "Igor Matovič (OĽaNO)", "EPP", "February 2020 parliamentary election"],
+  ["Apr-20", "SI", "Marjan Šarec (LMŠ)", "RE", "Janez Janša (SDS)", "EPP", "Šarec resigned; new coalition formed without an election"],
+  ["Oct-20", "BE", "Sophie Wilmès (MR)", "RE", "Alexander De Croo (Open VLD)", "RE", "Federal government formed 16 months after the 2019 election"],
+  ["Feb-21", "EE", "Jüri Ratas (Kesk)", "RE", "Kaja Kallas (Reform)", "RE", "Ratas resigned over a corruption investigation involving his party"],
+  ["Mar-21", "IT", "Giuseppe Conte (independent)", "UNAFF", "Mario Draghi (independent)", "UNAFF", "Conte resigned after Italia Viva left his coalition"],
+  ["Apr-21", "HU", "Viktor Orbán (Fidesz)", "EPP", "Viktor Orbán (Fidesz)", "NI", "No change of leader: Fidesz left the EPP"],
+  ["Apr-21", "SK", "Igor Matovič (OĽaNO)", "EPP", "Eduard Heger (OĽaNO)", "EPP", "Matovič stepped down after the coalition crisis over the secret Sputnik V vaccine purchase"],
+  ["Jun-21", "BG", "Boyko Borisov (GERB)", "EPP", "Stefan Yanev (independent)", "RE", "No government formed after the April 2021 election; caretaker government"],
+  ["Aug-21", "LT", "", "", "", "", ""],
+  ["Nov-21", "AT", "Sebastian Kurz (ÖVP)", "EPP", "Alexander Schallenberg (ÖVP)", "EPP", "Kurz stepped down amid a corruption investigation"],
+  ["Dec-21", "SE", "Stefan Löfven (S)", "S&D", "Magdalena Andersson (S)", "S&D", "Löfven stepped down as party leader and prime minister"],
+  ["Jan-22", "AT", "Alexander Schallenberg (ÖVP)", "EPP", "Karl Nehammer (ÖVP)", "EPP", "Kurz quit politics; Nehammer became ÖVP leader and chancellor"],
+  ["Jan-22", "BG", "Stefan Yanev (independent)", "RE", "Kiril Petkov (PP)", "RE", "November 2021 parliamentary election"],
+  ["Jan-22", "CZ", "Andrej Babiš (ANO)", "RE", "Petr Fiala (ODS)", "ECR", "October 2021 parliamentary election"],
+  ["Jan-22", "DE", "Angela Merkel (CDU)", "EPP", "Olaf Scholz (SPD)", "S&D", "September 2021 federal election"],
+  ["Jun-22", "SI", "Janez Janša (SDS)", "EPP", "Robert Golob (GS)", "RE", "April 2022 parliamentary election"],
+  ["Jul-22", "IE", "", "", "", "", ""],
+  ["Sep-22", "BG", "Kiril Petkov (PP)", "RE", "Galab Donev (independent)", "UNAFF", "Petkov government lost a no-confidence vote; caretaker government"],
+  ["Nov-22", "IT", "Mario Draghi (independent)", "UNAFF", "Giorgia Meloni (FdI)", "ECR", "September 2022 snap parliamentary election"],
+  ["Nov-22", "SE", "Magdalena Andersson (S)", "S&D", "Ulf Kristersson (M)", "EPP", "September 2022 parliamentary election"],
+  ["Jan-23", "IE", "Micheál Martin (FF)", "RE", "Leo Varadkar (FG)", "EPP", "Agreed rotation of the Taoiseach within the coalition"],
+  ["Mar-23", "CY", "Nicos Anastasiades (DISY)", "EPP", "Nikos Christodoulides (independent)", "UNAFF", "February 2023 presidential election"],
+  ["Jun-23", "GR", "Kyriakos Mitsotakis (ND)", "EPP", "Ioannis Sarmas (independent)", "UNAFF", "Caretaker government before the June 2023 repeat election"],
+  ["Jun-23", "SK", "Eduard Heger (OĽaNO)", "EPP", "Ľudovít Ódor (independent)", "UNAFF", "Heger government lost a no-confidence vote; caretaker government"],
+  ["Jul-23", "BG", "Galab Donev (independent)", "UNAFF", "Nikolai Denkov (PP)", "RE", "Government formed after the April 2023 election"],
+  ["Jul-23", "GR", "Ioannis Sarmas (independent)", "UNAFF", "Kyriakos Mitsotakis (ND)", "EPP", "June 2023 parliamentary election"],
+  ["Jul-23", "FI", "Sanna Marin (SDP)", "S&D", "Petteri Orpo (Kok)", "EPP", "April 2023 parliamentary election"],
+  ["Oct-23", "LV", "Krišjānis Kariņš (JV)", "EPP", "Evika Siliņa (JV)", "EPP", "Kariņš resigned after his coalition broke down"],
+  ["Nov-23", "SK", "Ľudovít Ódor (independent)", "UNAFF", "Robert Fico (Smer)", "NI", "September 2023 parliamentary election"],
+  ["Dec-23", "LU", "Xavier Bettel (DP)", "RE", "Luc Frieden (CSV)", "EPP", "October 2023 parliamentary election"],
+  ["Jan-24", "PL", "Mateusz Morawiecki (PiS)", "ECR", "Donald Tusk (KO)", "EPP", "October 2023 parliamentary election"],
+  ["May-24", "BG", "Nikolai Denkov (PP)", "RE", "Dimitar Glavchev (independent)", "UNAFF", "Planned rotation failed; caretaker government"],
+  ["May-24", "IE", "Leo Varadkar (FG)", "EPP", "Simon Harris (FG)", "EPP", "Varadkar resigned as Fine Gael leader and Taoiseach"],
+  ["May-24", "PT", "António Costa (PS)", "S&D", "Luís Montenegro (PSD)", "EPP", "March 2024 snap election, after Costa resigned over an investigation"],
+  ["Aug-24", "EE", "Kaja Kallas (Reform)", "RE", "Kristen Michal (Reform)", "RE", "Kallas nominated as EU High Representative"],
+  ["Aug-24", "HU", "Viktor Orbán (Fidesz)", "NI", "Viktor Orbán (Fidesz)", "PfE", "No change of leader: Fidesz co-founded Patriots for Europe"],
+  ["Aug-24", "NL", "Mark Rutte (VVD)", "RE", "Dick Schoof (independent)", "UNAFF", "Government formed after the November 2023 election"],
+  ["Feb-25", "AT", "Karl Nehammer (ÖVP)", "EPP", "Alexander Schallenberg (ÖVP)", "EPP", "Nehammer resigned after coalition talks failed; interim chancellor"],
+  ["Feb-25", "BG", "Dimitar Glavchev (independent)", "UNAFF", "Rosen Zhelyazkov (GERB)", "EPP", "Government formed after the October 2024 election"],
+  ["Feb-25", "IE", "Simon Harris (FG)", "EPP", "Micheál Martin (FF)", "RE", "November 2024 general election"],
+  ["Mar-25", "BE", "Alexander De Croo (Open VLD)", "RE", "Bart De Wever (N-VA)", "ECR", "Federal government formed after the June 2024 election"],
+  ["Mar-25", "RO", "Klaus Iohannis (independent, ex-PNL)", "EPP", "Ilie Bolojan (PNL)", "EPP", "Iohannis resigned; Senate president became interim president"],
+  ["Apr-25", "AT", "Alexander Schallenberg (ÖVP)", "EPP", "Christian Stocker (ÖVP)", "EPP", "ÖVP–SPÖ–NEOS government formed after the September 2024 election"],
+  ["Jun-25", "DE", "Olaf Scholz (SPD)", "S&D", "Friedrich Merz (CDU)", "EPP", "February 2025 snap federal election"],
+  ["Jun-25", "RO", "Ilie Bolojan (PNL)", "EPP", "Nicușor Dan (independent)", "RE", "May 2025 presidential election"],
+  ["Jan-26", "CZ", "Petr Fiala (ODS)", "ECR", "Andrej Babiš (ANO)", "PfE", "October 2025 parliamentary election"],
+  ["Mar-26", "BG", "Rosen Zhelyazkov (GERB)", "EPP", "Andrey Gyurov (independent)", "RE", "Zhelyazkov government resigned after mass protests; caretaker government"],
+  ["Mar-26", "NL", "Dick Schoof (independent)", "UNAFF", "Rob Jetten (D66)", "RE", "October 2025 parliamentary election"],
+  ["Jun-26", "BG", "Andrey Gyurov (independent)", "RE", "Rumen Radev (Progressive Bulgaria)", "UNAFF", "April 2026 snap parliamentary election"],
+  ["Jun-26", "HU", "Viktor Orbán (Fidesz)", "PfE", "Péter Magyar (Tisza)", "EPP", "April 2026 parliamentary election"],
+  ["Jun-26", "LV", "Evika Siliņa (JV)", "EPP", "Andris Kulbergs (AS)", "ECR", "Siliņa's coalition collapsed after a dispute over drone incidents"],
+  ["Jun-26", "SI", "Robert Golob (GS)", "RE", "Janez Janša (SDS)", "EPP", "March 2026 parliamentary election"],
+];
+// The 27 members today: [country, name, party, group, photo]. Photo: paste a Wikimedia Commons or Wikipedia file link
+// (e.g. https://commons.wikimedia.org/wiki/File:Example.jpg); leave "" to show the country code instead.
+let LEADERS = [
+  ["AT", "Christian Stocker", "ÖVP", "EPP", ""],
+  ["BE", "Bart De Wever", "N-VA", "ECR", ""],
+  ["BG", "Rumen Radev", "Progressive Bulgaria", "UNAFF", ""],
+  ["HR", "Andrej Plenković", "HDZ", "EPP", ""],
+  ["CY", "Nikos Christodoulides", "independent", "UNAFF", ""],
+  ["CZ", "Andrej Babiš", "ANO", "PfE", ""],
+  ["DK", "Mette Frederiksen", "S", "S&D", ""],
+  ["EE", "Kristen Michal", "Reform", "RE", ""],
+  ["FI", "Petteri Orpo", "Kok", "EPP", ""],
+  ["FR", "Emmanuel Macron", "RE", "RE", ""],
+  ["DE", "Friedrich Merz", "CDU", "EPP", ""],
+  ["GR", "Kyriakos Mitsotakis", "ND", "EPP", ""],
+  ["HU", "Péter Magyar", "Tisza", "EPP", ""],
+  ["IE", "Micheál Martin", "FF", "RE", ""],
+  ["IT", "Giorgia Meloni", "FdI", "ECR", ""],
+  ["LV", "Andris Kulbergs", "AS", "ECR", ""],
+  ["LT", "Gitanas Nausėda", "independent", "UNAFF", ""],
+  ["LU", "Luc Frieden", "CSV", "EPP", ""],
+  ["MT", "Robert Abela", "PL", "S&D", ""],
+  ["NL", "Rob Jetten", "D66", "RE", ""],
+  ["PL", "Donald Tusk", "KO", "EPP", ""],
+  ["PT", "Luís Montenegro", "PSD", "EPP", ""],
+  ["RO", "Nicușor Dan", "independent", "RE", ""],
+  ["SK", "Robert Fico", "Smer", "NI", ""],
+  ["SI", "Janez Janša", "SDS", "EPP", ""],
+  ["ES", "Pedro Sánchez", "PSOE", "S&D", ""],
+  ["SE", "Ulf Kristersson", "M", "EPP", ""],
+];
+const COUNTRY = { HR: "Croatia", ES: "Spain", FR: "France", AT: "Austria", BE: "Belgium", BG: "Bulgaria", CY: "Cyprus", CZ: "Czechia", DE: "Germany", DK: "Denmark", EE: "Estonia", FI: "Finland",
+  GB: "United Kingdom", GR: "Greece", HU: "Hungary", IE: "Ireland", IT: "Italy", LT: "Lithuania", LU: "Luxembourg", LV: "Latvia", MT: "Malta",
+  NL: "Netherlands", PL: "Poland", PT: "Portugal", RO: "Romania", SE: "Sweden", SI: "Slovenia", SK: "Slovakia" };
+const COLS = ["EPP", "S&D", "ECR", "RE", "G/EFA", "LEFT", "NI", "PfE", "ESN", "UNAFF"];
+
+// =====================================================================
+// GOOGLE SHEET. Paste the sheet's ID (the long code between /d/ and /edit in its address).
+// The sheet must be shared as "Anyone with the link – Viewer". Leave "" to use the data above.
+// If the sheet can't be read, the page falls back to the data above.
+// =====================================================================
+const SHEET_ID = "1bTN46RFMMl-QHkyAGKDXcgYxr_2m2YUjE0uAJMAR5Wo";
+const TABS = { monthly: "Monthly", changes: "Changes", leaders: "Leaders", groups: "Groups" };
+
+const KEYMAP = { "greens/efa": "G/EFA", "greens": "G/EFA", "g/efa": "G/EFA", "unaffiliated": "UNAFF", "unaff": "UNAFF", "unaff.": "UNAFF", "non inscrits": "NI", "ni": "NI",
+  "epp": "EPP", "s&d": "S&D", "ecr": "ECR", "re": "RE", "renew": "RE", "left": "LEFT", "pfe": "PfE", "esn": "ESN" };
+const gkey = v => { v = String(v || "").trim(); return KEYMAP[v.toLowerCase()] || (COLS.includes(v) ? v : ""); };
+const MONS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// any month spelling from the sheet ("Jun-26", "Jun 2026", "June 2026", "2026-06-01", "6/1/2026", "01.06.2026") -> "Jun-26"
+function monthLabel(v) {
+  v = String(v || "").trim(); if (!v) return ""; let y, m, x;
+  if ((x = v.match(/^([A-Za-zé]{3,})[\s\-.\/]+'?(\d{2}|\d{4})$/))) { m = MONS.findIndex(n => x[1].toLowerCase().startsWith(n.toLowerCase())); y = +x[2]; }
+  else if ((x = v.match(/^(\d{4})-(\d{1,2})(?:-\d{1,2})?/))) { y = +x[1]; m = +x[2] - 1; }
+  else if ((x = v.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})/))) { y = +x[3]; const a = +x[1], b = +x[2]; m = (v.includes(".") ? b : a) - 1; if (a > 12) m = b - 1; }
+  if (m == null || m < 0 || m > 11 || !y) return "";
+  return `${MONS[m]}-${String(y % 100).padStart(2, "0")}`;
+}
+async function tab(name) {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(name)}&_=${Date.now()}`;
+  const res = await fetch(url); if (!res.ok) throw new Error(name);
+  return d3.csvParse(await res.text());
+}
+async function loadSheet() {
+  if (!SHEET_ID) return;
+  const [mo, ch, le, gr] = await Promise.all([tab(TABS.monthly), tab(TABS.changes), tab(TABS.leaders), tab(TABS.groups).catch(() => [])]);
+  const col = (r, re) => { const k = Object.keys(r).find(h => re.test(h.trim())); return k ? String(r[k] ?? "").trim() : ""; };
+  // Monthly: header = group keys
+  const lines = mo.map(r => { const lab = monthLabel(col(r, /^month/i)); if (!lab) return "";
+    const byKey = {}; for (const h of Object.keys(r)) { const k = gkey(h); if (k) byKey[k] = String(r[h] ?? "").trim(); }
+    return [lab, ...COLS.map(c => byKey[c] === "" || byKey[c] == null ? "-" : +byKey[c])].join(" "); }).filter(Boolean);
+  if (lines.length < 2) throw new Error("Monthly tab looks empty");
+  HISTORY = lines.join("\n");
+  EVENTS = ch.map(r => [monthLabel(col(r, /^month/i)), col(r, /country/i).toUpperCase(), col(r, /^leaving member/i), gkey(col(r, /^leaving group/i)),
+    col(r, /^joining member/i), gkey(col(r, /^joining group/i)), col(r, /^reason/i)]).filter(e => e[0] && e[1]);
+  const L = le.map(r => [col(r, /country code/i).toUpperCase(), col(r, /^member/i), col(r, /^party/i), gkey(col(r, /^group/i)), col(r, /^photo/i)]).filter(l => l[0] && l[1]);
+  if (L.length) LEADERS = L;
+  for (const r of le) { const c = col(r, /country code/i).toUpperCase(), n = col(r, /^country$/i); if (c && n) COUNTRY[c] = n; }
+  // Groups: names, short labels, colours, seat order
+  const upd = gr.map(r => ({ key: gkey(col(r, /group key/i)), label: col(r, /^name/i), short: col(r, /^short/i), color: col(r, /colou?r/i), order: +col(r, /order/i) }))
+    .filter(g => g.key);
+  if (upd.length) {
+    for (const u of upd) { const g = GROUPS.find(g => g.key === u.key); if (!g) continue;
+      if (u.label) g.label = u.label; if (u.short) g.short = u.short; if (/^#?[0-9a-f]{6}$/i.test(u.color)) g.color = u.color[0] === "#" ? u.color : "#" + u.color; g.order = u.order; }
+    if (GROUPS.every(g => g.order)) GROUPS.sort((a, b) => a.order - b.order);
+  }
+}
+
+loadSheet().then(() => { if (SHEET_ID) console.info("European Council tracker: data loaded from the Google Sheet"); document.documentElement.dataset.source = SHEET_ID ? "sheet" : "built-in"; })
+  .catch(e => { console.warn("Google Sheet not loaded, using the built-in data:", e && e.message); document.documentElement.dataset.source = "built-in"; }).finally(main);
+function main() {
+
+
+// =====================================================================
+const MON = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+const rows = HISTORY.trim().split("\n").map(l => {
+  const [m, ...v] = l.trim().split(/\s+/); const [mo, yy] = m.split("-");
+  const r = { date: new Date(2000 + +yy, MON[mo], 1), label: m };
+  COLS.forEach((c, i) => r[c] = v[i] === "-" || v[i] === undefined ? null : +v[i]);
+  return r;
+});
+const G = Object.fromEntries(GROUPS.map(g => [g.key, g]));
+const changes = EVENTS.map(([m, c, o, og, n, ng, w]) => ({ m, c, o, og, n, ng, w }));
+const byMonth = d3.group(changes, e => e.m);
+rows.forEach((r, i) => { r.ev = byMonth.get(r.label) || []; r.prev = rows[i - 1] || null; });
+const today = rows[rows.length - 1], before = rows[rows.length - 2];
+const total = d3.sum(COLS, c => today[c] || 0);
+const shown = COLS.filter(c => rows.some(r => r[c] > 0)); // groups that ever had a seat
+
+const fmtMonth = d3.timeFormat("%B %Y");
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const delta = (r, c) => r.prev && r[c] !== null && r.prev[c] !== null ? r[c] - r.prev[c] : 0;
+const dHtml = d => d > 0 ? `<span class="up">+${d}</span>` : d < 0 ? `<span class="down">−${-d}</span>` : "";
+const grp = k => k && G[k] ? `<span class="grp" style="--g:${G[k].color}">${esc(G[k].short === "Unaff." ? "Unaffiliated" : G[k].short)}</span>` : "";
+const person = (name, k) => `<span>${esc(name || "—")} ${grp(k)}</span>`;
+const changeCard = e => `<div class="chg"><div class="c"><span class="cc">${esc(e.c)}</span>${esc(COUNTRY[e.c] || e.c)}</div>${
+  e.o || e.n ? `<div class="who">${e.o === e.n ? `<span class="k">Member</span><span>${esc(e.o)} ${grp(e.og)} → ${grp(e.ng)}</span>` :
+    `<span class="k">Out</span>${person(e.o, e.og)}<span class="k">In</span>${person(e.n, e.ng)}`}</div>` : ""}${
+  e.w ? `<div class="why">${esc(e.w)}</div>` : ""}</div>`;
+
+// photo links: Commons / Wikipedia file pages or direct upload links -> a small thumbnail
+function photoUrl(u, w) {
+  u = (u || "").trim(); if (!u) return "";
+  const f = u.match(/\/wiki\/(?:[^\/:]+:)?(?:File|Datei|Fichier|Plik|Archivo|Bild):(.+)$/i) || u.match(/upload\.wikimedia\.org\/.+\/([^\/?#]+\.(?:jpe?g|png|webp|svg|tiff?))$/i);
+  return f ? `https://commons.wikimedia.org/wiki/Special:FilePath/${f[1].split(/[?#]/)[0]}?width=${w}` : u;
+}
+// "in the European Council since": the last month this country's member changed (data starts in 2019)
+function sinceOf(c) {
+  const last = [...changes].reverse().find(e => e.c === c && e.n && e.o !== e.n);
+  if (!last) return "In the European Council since before 2019";
+  const r = rows.find(r => r.label === last.m); return r ? `In the European Council since ${fmtMonth(r.date)}` : "";
+}
+
+// tooltip
+const tip = document.getElementById("tip");
+function showTip(pt, html) {
+  tip.innerHTML = html; tip.style.opacity = 1;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = pt.clientX + 16, y = pt.clientY + 16;
+  if (x + w > innerWidth - 8) x = Math.max(8, pt.clientX - w - 16);
+  if (y + h > innerHeight - 8) y = Math.max(8, innerHeight - h - 8);
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+const hideTip = () => tip.style.opacity = 0;
+
+document.getElementById("asof").textContent = fmtMonth(today.date);
+document.getElementById("range").textContent = `${rows[0].date.getFullYear()}–${today.date.getFullYear()}`;
+
+// =====================================================================
+// 1. Today: seat chart, tally, latest changes
+// =====================================================================
+let hl = null;
+(function now() {
+  const order = GROUPS.filter(g => (today[g.key] || 0) > 0);
+  const W = 540, H = 312, cx = W / 2, cy = H - 28, radii = [130, 184, 238], seatR = 24;
+  const counts = (() => { const L = d3.sum(radii), c = radii.map(r => Math.round(total * r / L)); c[c.length - 1] += total - d3.sum(c); return c; })();
+  const seats = [];
+  radii.forEach((r, i) => { const n = counts[i];
+    for (let k = 0; k < n; k++) { const a = Math.PI * (1 - k / (n - 1)); seats.push({ a, x: cx + r * Math.cos(a), y: cy - r * Math.sin(a) }); } });
+  seats.sort((p, q) => q.a - p.a || Math.hypot(p.x - cx, p.y - cy) - Math.hypot(q.x - cx, q.y - cy));
+  // one seat per leader, grouped by political family, countries alphabetical within a group
+  const people = LEADERS.map(([c, name, party, g, photo]) => ({ c, name, party, g, photo: photoUrl(photo, 160) }));
+  let i = 0; for (const g of order) for (const p of people.filter(p => p.g === g.key).sort((a, b) => (COUNTRY[a.c] || a.c).localeCompare(COUNTRY[b.c] || b.c))) Object.assign(seats[i++], { g, p });
+  const mismatch = order.some(g => people.filter(p => p.g === g.key).length !== today[g.key]);
+  if (mismatch) console.warn("LEADERS does not match the seat numbers of " + today.label);
+
+  const svg = d3.select("#hemi").append("svg").attr("viewBox", `0 0 ${W} ${H}`);
+  const defs = svg.append("defs");
+  defs.append("clipPath").attr("id", "face").attr("clipPathUnits", "objectBoundingBox").append("circle").attr("cx", .5).attr("cy", .5).attr("r", .5);
+  const seat = svg.selectAll("g.seat").data(seats.filter(d => d.g)).join("g").attr("class", "seat").attr("transform", d => `translate(${d.x},${d.y})`)
+    .attr("tabindex", 0).attr("role", "img").attr("aria-label", d => d.p ? `${COUNTRY[d.p.c]}: ${d.p.name} (${d.p.party}), ${d.g.label}` : d.g.label);
+  seat.append("circle").attr("r", seatR).attr("fill", d => d.g.color);
+  seat.filter(d => d.p && d.p.photo).append("image").attr("href", d => d.p.photo).attr("x", -seatR + 4).attr("y", -seatR + 4)
+    .attr("width", 2 * seatR - 8).attr("height", 2 * seatR - 8).attr("preserveAspectRatio", "xMidYMin slice").attr("clip-path", "url(#face)");
+  seat.filter(d => d.p && !d.p.photo).append("text").attr("class", "seat-cc").attr("dy", ".35em")
+    .attr("fill", d => ["RE", "UNAFF"].includes(d.g.key) ? "#1A1D23" : "#fff").text(d => d.p.c);
+  const tipOf = d => d.p ? `<div class="who-tip">${d.p.photo ? `<img src="${esc(d.p.photo)}" alt="" style="border-color:${d.g.color}">` : `<span class="ph" style="background:${d.g.color};color:${["RE", "UNAFF"].includes(d.g.key) ? "#1A1D23" : "#fff"}">${esc(d.p.c)}</span>`}
+      <div><b>${esc(d.p.name)}</b><span>${esc(COUNTRY[d.p.c] || d.p.c)} · ${esc(d.p.party)}</span>${grp(d.g.key)}<span class="since">${esc(sinceOf(d.p.c))}</span></div></div>`
+    : `<b>${esc(d.g.label)}</b>`;
+  seat.on("mouseenter focus", (ev, d) => set(d.g.key, d)).on("mousemove", (ev, d) => showTip(ev, tipOf(d)))
+    .on("mouseleave blur", () => { set(null); hideTip(); });
+  svg.append("text").attr("class", "total").attr("x", cx).attr("y", cy - 38).text(total);
+  svg.append("text").attr("class", "total-l").attr("x", cx).attr("y", cy - 14).text("members");
+
+  const list = GROUPS.filter(g => shown.includes(g.key) || today[g.key] !== null).filter(g => g.key !== "G/EFA" || today[g.key])
+    .sort((a, b) => (today[b.key] || 0) - (today[a.key] || 0));
+  const max = d3.max(list, g => today[g.key] || 0);
+  const li = d3.select("#tally").selectAll("li").data(list).join("li").attr("class", g => today[g.key] ? "" : "zero")
+    .attr("title", g => `${g.label}: ${today[g.key] || 0} of ${total} seats`)
+    .html(g => { const n = today[g.key] || 0, d = delta(today, g.key);
+      return `<span class="dot" style="background:${g.color}"></span><span class="name">${esc(g.label)}</span>
+        <span class="track"><span class="fill" style="display:block;width:${100 * n / max}%;background:${g.color}"></span></span>
+        <span class="n">${n}</span><span class="d" title="Change since ${fmtMonth(before.date)}">${dHtml(d)}</span>`; })
+    .on("mouseenter", (ev, g) => set(g.key)).on("mouseleave", () => set(null))
+    .on("click", (ev, g) => { focus = focus === g.key ? null : g.key; drawLines(); });
+  function set(k, one) {
+    hl = k; seat.style("opacity", d => !k || d.g.key === k ? 1 : .2).classed("on", d => one ? d === one : false);
+    li.classed("on", g => g.key === k);
+  }
+
+  const latest = byMonth.get(today.label) || [];
+  document.getElementById("latest").innerHTML = latest.length
+    ? `<h3>Latest changes <span>· ${fmtMonth(today.date)} · +/− shows the change since ${fmtMonth(before.date)}</span></h3><div class="chips">${latest.map(changeCard).join("")}</div>` : "";
+})();
+
+// =====================================================================
+// 2. Over time: line chart with direct labels and change markers
+// =====================================================================
+let focus = null, mode = "lines";
+const legend = d3.select("#legend"), clear = document.getElementById("clear");
+clear.onclick = () => { focus = null; drawLines(); };
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+  mode = b.dataset.mode; document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b)); drawLines(); });
+function drawLines() {
+  const el = document.getElementById("lines"); el.innerHTML = "";
+  const W = Math.max(300, el.clientWidth), small = W < 560;
+  const H = small ? 340 : 410, m = { t: 12, r: small ? 50 : 70, b: 64, l: small ? 36 : 66 };
+  const x = d3.scaleTime().domain(d3.extent(rows, d => d.date)).range([m.l, W - m.r]);
+  const stacked = mode === "stacked";
+  const ymax = stacked ? d3.max(rows, r => d3.sum(shown, c => r[c] ?? 0)) : d3.max(rows, r => d3.max(shown, c => r[c] ?? 0));
+  const y = d3.scaleLinear().domain([0, stacked ? ymax : Math.ceil((ymax + 1) / 2) * 2]).range([H - m.b, m.t]);
+  const svg = d3.select(el).append("svg").attr("viewBox", `0 0 ${W} ${H}`);
+  const yTicks = stacked ? [0, 5, 10, 14, 20, 27].filter(v => v <= ymax) : y.ticks(small ? 5 : 7).filter(Number.isInteger);
+  svg.append("text").attr("class", "ytitle").attr("transform", `translate(${small ? 10 : 16},${(m.t + H - m.b) / 2}) rotate(-90)`)
+    .text(stacked ? "Members (stacked)" : "Number of members");
+
+  svg.append("g").selectAll("line").data(yTicks).join("line").attr("class", "gridline")
+    .attr("x1", m.l).attr("x2", W - m.r).attr("y1", d => y(d)).attr("y2", d => y(d));
+  svg.append("g").attr("class", "axis").attr("transform", `translate(${m.l - 6},0)`).call(d3.axisLeft(y).tickValues(yTicks).tickSize(0).tickFormat(d3.format("d")));
+  svg.append("g").attr("class", "axis").attr("transform", `translate(0,${H - m.b + 14})`)
+    .call(d3.axisBottom(x).ticks(d3.timeYear.every(1)).tickSize(0).tickFormat(d3.timeFormat(small ? "’%y" : "%Y")));
+
+  const op = c => !focus || c === focus ? 1 : .12;
+  let labs;
+  if (stacked) {
+    // stacked areas, left-to-right political order from the bottom; the 14-member line marks a majority of 27
+    const keys = GROUPS.map(g => g.key).filter(k => shown.includes(k));
+    const series = d3.stack().keys(keys).value((r, k) => r[k] ?? 0)(rows);
+    const area = d3.area().x(d => x(d.data.date)).y0(d => y(d[0])).y1(d => y(d[1])).curve(d3.curveMonotoneX);
+    svg.append("g").selectAll("path").data(series).join("path").attr("class", "band").attr("d", area)
+      .attr("fill", s => G[s.key].color).style("opacity", s => focus ? (s.key === focus ? 1 : .18) : .92);
+    svg.append("line").attr("class", "half").attr("x1", m.l).attr("x2", W - m.r).attr("y1", y(14)).attr("y2", y(14));
+    if (!small) svg.append("text").attr("class", "half-l").attr("x", m.l + 6).attr("y", y(14) - 5).text("14 = more than half of 27 members");
+    const last = rows.length - 1;
+    labs = series.map(s => ({ c: s.key, v: today[s.key] ?? 0, y: y((s[last][0] + s[last][1]) / 2) })).filter(l => l.v > 0);
+  } else {
+    // lines: groups with fewer seats first so the big lines sit on top
+    const order = [...shown].sort((a, b) => d3.mean(rows, r => r[a] ?? 0) - d3.mean(rows, r => r[b] ?? 0));
+    const lineOf = c => d3.line().defined(r => r[c] !== null).x(r => x(r.date)).y(r => y(r[c])).curve(d3.curveMonotoneX)(rows);
+    if (focus) order.push(order.splice(order.indexOf(focus), 1)[0]);
+    svg.append("g").selectAll("path").data(order).join("path").attr("class", "series")
+      .attr("d", lineOf).attr("stroke", c => G[c].color).style("opacity", op).attr("stroke-width", c => c === focus ? 3.5 : 2.5);
+    labs = shown.map(c => ({ c, y: y(today[c] ?? 0), v: today[c] ?? 0 }));
+  }
+
+  // direct labels at the right end, pushed apart so they don't overlap
+  labs.sort((a, b) => a.y - b.y || b.v - a.v);
+  const gap = 15; for (let k = 1; k < labs.length; k++) labs[k].y = Math.max(labs[k].y, labs[k - 1].y + gap);
+  const over = labs.length ? labs[labs.length - 1].y - (H - m.b + 4) : 0;
+  if (over > 0) labs.forEach(l => l.y -= over);
+  for (let k = labs.length - 2; k >= 0; k--) labs[k].y = Math.min(labs[k].y, labs[k + 1].y - gap);
+  svg.append("g").selectAll("text").data(labs).join("text").attr("class", "endlab")
+    .attr("x", W - m.r + 6).attr("y", l => l.y).attr("fill", l => l.c === "UNAFF" ? "#8C8C8C" : l.c === "RE" ? "#C99A00" : G[l.c].color).style("opacity", l => op(l.c))
+    .text(l => `${l.v} ${G[l.c].short}`).style("cursor", "pointer").on("click", (ev, l) => { focus = focus === l.c ? null : l.c; drawLines(); });
+
+  // changes: a small bar per month under the chart, one step per change
+  const trackY = H - m.b + 44, step = 4;
+  if (!small) svg.append("text").attr("class", "evtrack-l").attr("x", m.l - 6).attr("y", trackY).attr("text-anchor", "end").text("Changes");
+  const evRows = rows.filter(r => r.ev.length);
+  const mk = svg.append("g").selectAll("rect").data(evRows).join("rect").attr("class", "evmark")
+    .attr("x", r => x(r.date) - 2).attr("width", 4).attr("y", r => trackY - step * r.ev.length).attr("height", r => step * r.ev.length).attr("rx", 1);
+
+  // hover: one rule per month, values with +/−, and who joined or left
+  const rule = svg.append("line").attr("class", "rule").attr("y1", m.t).attr("y2", trackY).style("opacity", 0);
+  const dots = svg.append("g");
+  const bisect = d3.bisector(r => r.date).center;
+  function at(pt, ev) {
+    const p = d3.pointer(ev, svg.node()), r = rows[bisect(rows, x.invert(Math.max(m.l, Math.min(W - m.r, p[0]))))];
+    rule.attr("x1", x(r.date)).attr("x2", x(r.date)).style("opacity", 1);
+    mk.classed("on", d => d === r);
+    const vis = shown.filter(c => r[c] !== null && (!focus || c === focus));
+    let acc = 0; const top = {}; for (const k of GROUPS.map(g => g.key).filter(k => shown.includes(k))) { acc += r[k] ?? 0; top[k] = acc; }
+    dots.selectAll("circle").data(stacked ? [] : vis).join("circle").attr("r", 4).attr("cx", x(r.date)).attr("cy", c => y(r[c])).attr("fill", c => G[c].color).attr("stroke", "#fff").attr("stroke-width", 1.5);
+    const list = shown.filter(c => r[c] !== null && (r[c] > 0 || delta(r, c) || c === focus)).sort((a, b) => r[b] - r[a]);
+    const tot = d3.sum(shown, c => r[c] ?? 0);
+    showTip(pt, `<b>${fmtMonth(r.date)} · ${tot} members</b><table>${list.map(c =>
+      `<tr${focus && c !== focus ? ' style="opacity:.4"' : ""}><td><span class="dot" style="background:${G[c].color}"></span>${esc(G[c].label)}</td><td class="v">${r[c]}</td><td class="dd">${dHtml(delta(r, c))}</td></tr>`).join("")}</table>${r.ev.map(changeCard).join("")}`);
+  }
+  svg.append("rect").attr("x", m.l).attr("y", 0).attr("width", W - m.l - m.r).attr("height", trackY + 12).attr("fill", "transparent").style("cursor", "crosshair")
+    .on("mousemove", ev => at(ev, ev))
+    .on("touchstart touchmove", ev => at(ev.touches[0], ev.touches[0]), { passive: true })
+    .on("mouseleave touchend", () => { rule.style("opacity", 0); dots.selectAll("circle").remove(); mk.classed("on", false); hideTip(); });
+
+  // legend
+  legend.classed("filtering", !!focus);
+  legend.selectAll("li").data(shown.map(c => G[c])).join("li").html(g =>
+    `<button type="button" aria-pressed="${focus === g.key}"><span class="dot" style="background:${g.color}"></span>${esc(g.label)}</button>`)
+    .select("button").on("click", (ev, g) => { focus = focus === g.key ? null : g.key; drawLines(); });
+  clear.classList.toggle("show", !!focus);
+  postHeight();
+}
+
+// =====================================================================
+// 3. Every change, newest first, with a country filter
+// =====================================================================
+(function list() {
+  const sel = document.getElementById("f-country"), box = document.getElementById("changes"), more = document.getElementById("more");
+  const codes = [...new Set(changes.map(e => e.c))].sort((a, b) => (COUNTRY[a] || a).localeCompare(COUNTRY[b] || b));
+  sel.insertAdjacentHTML("beforeend", codes.map(c => `<option value="${c}">${esc(COUNTRY[c] || c)} (${changes.filter(e => e.c === c).length})</option>`).join(""));
+  document.getElementById("nchanges").textContent = `${changes.length} changes`;
+  let all = false;
+  function render() {
+    const f = sel.value, months = rows.filter(r => r.ev.some(e => !f || e.c === f)).reverse();
+    const vis = all || f ? months : months.slice(0, 6);
+    box.innerHTML = vis.map(r => `<div class="month"><div class="m">${d3.timeFormat("%b %Y")(r.date)}<span>${r.ev.filter(e => !f || e.c === f).length} ${r.ev.filter(e => !f || e.c === f).length === 1 ? "change" : "changes"}</span></div>
+      <div class="list">${r.ev.filter(e => !f || e.c === f).map(changeCard).join("")}</div></div>`).join("") || `<p class="hint">No changes.</p>`;
+    more.style.display = vis.length < months.length ? "" : "none";
+    more.textContent = `Show all ${months.length} months with changes`;
+    postHeight();
+  }
+  sel.onchange = render; more.onclick = () => { all = true; render(); };
+  render();
+})();
+
+// =====================================================================
+// embedding: tell the WordPress page how tall we are
+// =====================================================================
+function postHeight() { try { parent.postMessage({ "datawrapper-height": { "ee-euco": document.documentElement.scrollHeight } }, "*"); } catch (e) {} }
+drawLines();
+let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(drawLines, 120); });
+if (document.fonts) document.fonts.ready.then(postHeight);
+new ResizeObserver(postHeight).observe(document.body);
+}
+})();
+</script>
+</body>
+</html>
