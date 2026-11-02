@@ -425,11 +425,11 @@ const COUNTRY = { HR: "Croatia", ES: "Spain", FR: "France", AT: "Austria", BE: "
 const COLS = ["EPP", "S&D", "ECR", "RE", "G/EFA", "LEFT", "NI", "PfE", "ESN", "UNAFF"];
 
 // =====================================================================
-// GOOGLE SHEET. Paste the sheet's ID (the long code between /d/ and /edit in its address).
-// The sheet must be shared as "Anyone with the link – Viewer". Leave "" to use the data above.
-// If the sheet can't be read, the page falls back to the data above.
+// GOOGLE SHEET. The GitHub Action reads the Sheet with a keyless Google login and publishes each tab
+// as data/<tab>.csv next to this page (see scripts/fetch_sheets.py), so the page never contacts Google.
+// If the files can't be read, the page falls back to the data above. Set USE_SHEET = false to always use it.
 // =====================================================================
-const SHEET_ID = "1bTN46RFMMl-QHkyAGKDXcgYxr_2m2YUjE0uAJMAR5Wo";
+const USE_SHEET = true;
 const TABS = { monthly: "Monthly", changes: "Changes", leaders: "Leaders", groups: "Groups" };
 
 const KEYMAP = { "greens/efa": "G/EFA", "greens": "G/EFA", "g/efa": "G/EFA", "unaffiliated": "UNAFF", "unaff": "UNAFF", "unaff.": "UNAFF", "non inscrits": "NI", "ni": "NI",
@@ -446,12 +446,11 @@ function monthLabel(v) {
   return `${MONS[m]}-${String(y % 100).padStart(2, "0")}`;
 }
 async function tab(name) {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&headers=1&sheet=${encodeURIComponent(name)}&_=${Date.now()}`;
-  const res = await fetch(url); if (!res.ok) throw new Error(name);
+  const res = await fetch(`data/${name.toLowerCase()}.csv`, { cache: "no-cache" }); if (!res.ok) throw new Error(name);
   return d3.csvParse(await res.text());
 }
 async function loadSheet() {
-  if (!SHEET_ID) return;
+  if (!USE_SHEET) return;
   const [mo, ch, le, gr] = await Promise.all([tab(TABS.monthly), tab(TABS.changes), tab(TABS.leaders), tab(TABS.groups).catch(() => [])]);
   const col = (r, re) => { const k = Object.keys(r).find(h => re.test(h.trim())); return k ? String(r[k] ?? "").trim() : ""; };
   // Monthly: header = group keys
@@ -475,7 +474,7 @@ async function loadSheet() {
   }
 }
 
-loadSheet().then(() => { if (SHEET_ID) console.info("European Council tracker: data loaded from the Google Sheet"); document.documentElement.dataset.source = SHEET_ID ? "sheet" : "built-in"; })
+loadSheet().then(() => { if (USE_SHEET) console.info("European Council tracker: data loaded from the Google Sheet"); document.documentElement.dataset.source = USE_SHEET ? "sheet" : "built-in"; })
   .catch(e => { console.warn("Google Sheet not loaded, using the built-in data:", e && e.message); document.documentElement.dataset.source = "built-in"; }).finally(main);
 function main() {
 
