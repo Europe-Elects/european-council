@@ -1,0 +1,55 @@
+# Reads the European Council tracker's Google Sheet (keyless Google login) and publishes the page with
+# the data as data/*.csv. Runs on every change, every hour, and on demand (Actions › Build and deploy › Run workflow).
+name: Build and deploy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '41 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: google
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/659866385408/locations/global/workloadIdentityPools/github/providers/github-actions
+          service_account: ee-sheets-reader@project-6c08a079-4a01-46eb-aaf.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/spreadsheets.readonly
+          create_credentials_file: false
+
+      - name: Read the Google Sheet
+        env:
+          GOOGLE_TOKEN: ${{ steps.google.outputs.access_token }}
+          EUCO_SHEET_ID: ${{ secrets.EUCO_SHEET_ID }}
+        run: python3 scripts/fetch_sheets.py site/data
+
+      - name: Assemble the site
+        run: cp index.html site/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
